@@ -12,7 +12,7 @@ If you have any question, feel free to open an issue or reach out to us: [gcorso
 The repository also contains all the scripts to run the baselines and generate the figures.
 Additionally, there are visualization videos in `visualizations`.
 
-You might also be interested in this awesome [interactive online tool](https://huggingface.co/spaces/simonduerr/diffdock) by Simon Duerr on Hugging Face for running DiffDock and visualising the predicted structures on your browser. Instead, Brian Naughton made a [Google Colab notebook](https://colab.research.google.com/drive/1nvCyQkbO-TwXZKJ0RCShVEym1aFWxlkX) to run DiffDock. 
+You might also be interested in this awesome [interactive online tool](https://huggingface.co/spaces/simonduerr/diffdock) by Simon Duerr on Hugging Face for running DiffDock and visualising the predicted structures on your browser, however note that this does not use the optimal hyperparameters for the reverse diffusion which instead are provided below. Instead, Brian Naughton made a [Google Colab notebook](https://colab.research.google.com/drive/1nvCyQkbO-TwXZKJ0RCShVEym1aFWxlkX) to run DiffDock. 
 
 
 
@@ -81,7 +81,7 @@ And done, that is it!
 
 ### Run inference
 
-    python -m inference --protein_ligand_csv data/protein_ligand_example_csv.csv --out_dir results/user_predictions_small --inference_steps 20 --samples_per_complex 40 --batch_size 10
+    python -m inference --protein_ligand_csv data/protein_ligand_example_csv.csv --out_dir results/user_predictions_small --inference_steps 20 --samples_per_complex 40 --batch_size 10 --actual_steps 18 --no_final_step_noise
 
 
 
@@ -111,13 +111,13 @@ We first generate the language model embeddings for the testset, then run infere
     pip install -e .
     cd ..
     HOME=esm/model_weights python esm/scripts/extract.py esm2_t33_650M_UR50D data/prepared_for_esm_testset.fasta data/esm2_output --repr_layers 33 --include per_tok
-    python -m inference --protein_ligand_csv data/testset_csv.csv --out_dir results/user_predictions_testset --inference_steps 20 --samples_per_complex 40 --batch_size 10
-    python evaluate_files.py --results_path results/user_predictions_testset --file_to_exclude rank1.sdf
+    python -m inference --protein_ligand_csv data/testset_csv.csv --out_dir results/user_predictions_testset --inference_steps 20 --samples_per_complex 40 --batch_size 10 --actual_steps 18 --no_final_step_noise
+    python evaluate_files.py --results_path results/user_predictions_testset --file_to_exclude rank1.sdf --num_predictions 40
 
 <!--
 To predict binding structures using the provided model weights run: 
 
-    python -m evaluate --model_dir workdir/paper_score_model --ckpt best_ema_inference_epoch_model.pt --confidence_ckpt best_model_epoch75.pt --confidence_model_dir workdir/paper_confidence_model --run_name DiffDockInference --inference_steps 20 --split_path data/splits/timesplit_test --samples_per_complex 40 --batch_size 10
+    python -m evaluate --model_dir workdir/paper_score_model --ckpt best_ema_inference_epoch_model.pt --confidence_ckpt best_model_epoch75.pt --confidence_model_dir workdir/paper_confidence_model --run_name DiffDockInference --inference_steps 20 --split_path data/splits/timesplit_test --samples_per_complex 40 --batch_size 10 --actual_steps 18 --no_final_step_noise
 
 To additionally save the .sdf files of the generated molecules, add the flag `--save_visualisation`
 -->
@@ -137,13 +137,13 @@ The score model used to generate the samples to train the confidence model does 
 
 Train the confidence model by running the following:
 
-    python -m confidence.confidence_train --original_model_dir workdir/small_score_model --run_name confidence_model --inference_steps 20 --samples_per_complex 7 --inf_sched_alpha 1 --inf_sched_beta 1 --batch_size 16 --n_epochs 100 --lr 3e-4 --scheduler_patience 50 --tr_sigma_min 0.1 --tr_sigma_max 34 --rot_sigma_min 0.03 --rot_sigma_max 1.55 --ns 24 --nv 6 --num_conv_layers 5 --dynamic_max_cross --scale_by_sigma --dropout 0.1 --all_atoms --remove_hs --c_alpha_max_neighbors 24 --receptor_radius 15 --esm_embeddings_path data/esm2_3billion_embeddings.pt --main_metric loss --main_metric_goal min --best_model_save_frequency 5 --rmsd_classification_cutoff 2 --cache_creation_id 1 --cache_ids_to_combine 1 2 3 4
+    python -m confidence.confidence_train --original_model_dir workdir/small_score_model --run_name confidence_model --inference_steps 20 --samples_per_complex 7 --batch_size 16 --n_epochs 100 --lr 3e-4 --scheduler_patience 50 --ns 24 --nv 6 --num_conv_layers 5 --dynamic_max_cross --scale_by_sigma --dropout 0.1 --all_atoms --remove_hs --c_alpha_max_neighbors 24 --receptor_radius 15 --esm_embeddings_path data/esm2_3billion_embeddings.pt --main_metric loss --main_metric_goal min --best_model_save_frequency 5 --rmsd_classification_cutoff 2 --cache_creation_id 1 --cache_ids_to_combine 1 2 3 4
 
 first with `--cache_creation_id 1` then `--cache_creation_id 2` etc. up to 4
 
 Now everything is trained and you can run inference with:
 
-    python -m evaluate --model_dir workdir/big_score_model --ckpt best_ema_inference_epoch_model.pt --confidence_ckpt best_model_epoch75.pt --confidence_model_dir workdir/confidence_model --run_name DiffDockInference --inference_steps 20 --split_path data/splits/timesplit_test --samples_per_complex 40 --batch_size 10
+    python -m evaluate --model_dir workdir/big_score_model --ckpt best_ema_inference_epoch_model.pt --confidence_ckpt best_model_epoch75.pt --confidence_model_dir workdir/confidence_model --run_name DiffDockInference --inference_steps 20 --split_path data/splits/timesplit_test --samples_per_complex 40 --batch_size 10 --actual_steps 18 --no_final_step_noise
 
 
 ## Citation
